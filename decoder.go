@@ -12,6 +12,15 @@ import (
 	"log"
 )
 
+func Decode(r io.Reader) (*Module, error) {
+	d := decoder{r: r}
+	m, err := d.readModule()
+	if err != nil {
+		return nil, err // TODO: wrap?
+	}
+	return &m, nil
+}
+
 type decoder struct {
 	r   io.Reader
 	err error

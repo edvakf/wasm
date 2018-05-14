@@ -47,7 +47,7 @@ type Section interface {
 }
 
 // SectionID represents the specific kind of section that a Section represents.
-type SectionID byte
+type SectionID byte // edvakf:varuint7
 
 const (
 	UnknownID  SectionID = 0  // User section ID
@@ -107,7 +107,7 @@ type ImportEntry struct {
 
 // FunctionSection declares the signature of all functions in the module
 type FunctionSection struct {
-	types []uint32 // indices into the type sections
+	types []uint32 // indices into the type sections // edvakf:varuint32
 }
 
 // TableSection encodes a table
@@ -195,7 +195,7 @@ type LocalName struct {
 }
 
 type FunctionBody struct {
-	BodySize   uint32       // size of function body to follow, in bytes
+	BodySize   uint32       // size of function body to follow, in bytes // edvakf:varuint32
 	LocalCount varuint32    // number of local entries
 	Locals     []LocalEntry // local variables
 	Code       Code         // bytecode of the function

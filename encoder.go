@@ -5,20 +5,14 @@
 package wasm
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io"
 )
 
-type Encoder struct {
-	w   io.Writer
-	err error
-}
-
-func NewEncoder(w io.Writer) *Encoder {
-	return &Encoder{w: w}
-}
-
-func (e *Encoder) Encode(m Module) error {
+//Encode writes the wasm binary to the writer
+func Encode(m Module, w io.Writer) error {
+	e := encoder{w: w}
 	e.writeModule(m)
 
 	if e.err != nil {
@@ -27,7 +21,12 @@ func (e *Encoder) Encode(m Module) error {
 	return nil
 }
 
-func (e *Encoder) writeVaruint7(v varuint7) {
+type encoder struct {
+	w   io.Writer
+	err error
+}
+
+func (e *encoder) writeVaruint7(v varuint7) {
 	if e.err != nil {
 		return
 	}
@@ -35,7 +34,7 @@ func (e *Encoder) writeVaruint7(v varuint7) {
 	e.err = v.write(e.w)
 }
 
-func (e *Encoder) writeVaruint32(v varuint32) {
+func (e *encoder) writeVaruint32(v varuint32) {
 	if e.err != nil {
 		return
 	}
@@ -43,7 +42,7 @@ func (e *Encoder) writeVaruint32(v varuint32) {
 	_, e.err = v.write(e.w)
 }
 
-func (e *Encoder) writeModule(m Module) {
+func (e *encoder) writeModule(m Module) {
 	if e.err != nil {
 		return
 	}
@@ -54,7 +53,7 @@ func (e *Encoder) writeModule(m Module) {
 	}
 }
 
-func (e *Encoder) writeHeader(hdr ModuleHeader) {
+func (e *encoder) writeHeader(hdr ModuleHeader) {
 	if e.err != nil {
 		return
 	}
@@ -67,20 +66,32 @@ func (e *Encoder) writeHeader(hdr ModuleHeader) {
 	e.err = binary.Write(e.w, order, hdr.Version)
 }
 
-func (e *Encoder) writeSection(sec Section) {
+func (e *encoder) writeSection(sec Section) {
 	if e.err != nil {
 		return
 	}
 
+	e.writeVaruint7(varuint7(sec.ID())) // id
+
+	b := new(bytes.Buffer)
+	encSec := &encoder{w: b}
 	switch s := sec.(type) {
 	case TypeSection:
-		e.writeTypeSection(s)
+		encSec.writeTypeSection(s)
+	case FunctionSection:
+		encSec.writeFunctionSection(s)
+	case CodeSection:
+		encSec.writeCodeSection(s)
 	default:
 		panic("TODO")
 	}
+	e.writeVaruint32(varuint32(b.Len())) // payload_len
+	_, e.err = e.w.Write(b.Bytes())
+
+	// TODO: name_len, name
 }
 
-func (e *Encoder) writeTypeSection(s TypeSection) {
+func (e *encoder) writeTypeSection(s TypeSection) {
 	if e.err != nil {
 		return
 	}
@@ -91,7 +102,7 @@ func (e *Encoder) writeTypeSection(s TypeSection) {
 	}
 }
 
-func (e *Encoder) writeFuncType(ft FuncType) {
+func (e *encoder) writeFuncType(ft FuncType) {
 	if e.err != nil {
 		return
 	}
@@ -109,10 +120,66 @@ func (e *Encoder) writeFuncType(ft FuncType) {
 	}
 }
 
-func (e *Encoder) writeValueType(v ValueType) {
+func (e *encoder) writeValueType(v ValueType) {
 	if e.err != nil {
 		return
 	}
 
 	e.writeVaruint7(varuint7(v))
+}
+
+func (e *encoder) writeFunctionSection(s FunctionSection) {
+	if e.err != nil {
+		return
+	}
+
+	e.writeVaruint32(varuint32(len(s.types)))
+	for _, t := range s.types {
+		e.writeVaruint32(varuint32(t))
+	}
+}
+
+func (e *encoder) writeCodeSection(s CodeSection) {
+	if e.err != nil {
+		return
+	}
+
+	e.writeVaruint32(varuint32(len(s.Bodies)))
+	for _, b := range s.Bodies {
+		e.writeFunctionBody(b)
+	}
+}
+
+func (e *encoder) writeFunctionBody(fb FunctionBody) {
+	if e.err != nil {
+		return
+	}
+
+	e.writeVaruint32(varuint32(fb.BodySize))
+	e.writeVaruint32(fb.LocalCount)
+	for _, l := range fb.Locals {
+		e.writeLocalEntry(l)
+	}
+	e.writeCode(fb.Code)
+}
+
+func (e *encoder) writeLocalEntry(l LocalEntry) {
+	if e.err != nil {
+		return
+	}
+
+	e.writeVaruint32(varuint32(l.Count))
+	e.writeValueType(l.Type)
+}
+
+func (e *encoder) writeCode(c Code) {
+	if e.err != nil {
+		return
+	}
+
+	_, e.err = e.w.Write(c.Code)
+	if e.err != nil {
+		return
+	}
+	_, e.err = e.w.Write([]byte{c.End})
 }

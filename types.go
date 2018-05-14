@@ -76,11 +76,11 @@ func (v varuint32) write(w io.Writer) (int, error) {
 	n := 0 // how many bytes written
 	for {
 		b := v & 0x7F
-		v = v >> 7
+		v >>= 7
 		if v != 0 {
-			b = b | 0x80
+			b |= 0x80
 		}
-		err := binary.Write(w, order, b)
+		_, err := w.Write([]byte{uint8(b)})
 		if err != nil {
 			return n, err
 		}
@@ -96,7 +96,7 @@ func (v varuint7) write(w io.Writer) error {
 	if v > 0x7F {
 		return fmt.Errorf("too large for varuint7: %d", v)
 	}
-	err := binary.Write(w, order, v)
+	_, err := w.Write([]byte{uint8(v)})
 	if err != nil {
 		return err
 	}
