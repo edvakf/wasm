@@ -12,10 +12,7 @@ import (
 )
 
 func TestSimple(t *testing.T) {
-	mod, err := wasm.NewModule(1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	mod := wasm.NewModule()
 
 	expected := []byte{'\x00', 'a', 's', 'm', '\x01', '\x00', '\x00', '\x00'}
 
@@ -23,10 +20,8 @@ func TestSimple(t *testing.T) {
 }
 
 func TestTypeSection(t *testing.T) {
-	mod, err := wasm.NewModule(1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	mod := wasm.NewModule()
+	mod.Sections = append(mod.Sections)
 
 	expected := []byte{'\x00', 'a', 's', 'm', '\x01', '\x00', '\x00', '\x00'}
 

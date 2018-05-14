@@ -7,6 +7,7 @@ package wasm
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -71,13 +72,44 @@ func varint(r io.Reader) (int32, int, error) {
 	return v, n, err
 }
 
-type ValueType int32
+func (v varuint32) write(w io.Writer) (int, error) {
+	n := 0 // how many bytes written
+	for {
+		b := v & 0x7F
+		v = v >> 7
+		if v != 0 {
+			b = b | 0x80
+		}
+		err := binary.Write(w, order, b)
+		if err != nil {
+			return n, err
+		}
+		n++
+		if v == 0 {
+			break
+		}
+	}
+	return n, nil
+}
+
+func (v varuint7) write(w io.Writer) error {
+	if v > 0x7F {
+		return fmt.Errorf("too large for varuint7: %d", v)
+	}
+	err := binary.Write(w, order, v)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type ValueType int32 // varuint7
 
 type BlockType varint7
 type ElemType varint7
 
 type FuncType struct {
-	form    uint32      // value for the 'func' type constructor
+	form    uint32      // value for the 'func' type constructor // varuint7
 	params  []ValueType // parameters of the function
 	results []ValueType // results of the function
 }

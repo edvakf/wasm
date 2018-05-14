@@ -5,7 +5,6 @@
 package wasm
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -28,13 +27,9 @@ func Open(name string) (Module, error) {
 	return dec.readModule()
 }
 
-func NewModule(version uint32) (*Module, error) {
-	if version != 1 {
-		return nil, errors.New("unsupported version")
-	}
-	h := ModuleHeader{Magic: magicWASM, Version: version}
-
-	return &Module{Header: h}, nil
+func NewModule() *Module {
+	h := ModuleHeader{Magic: magicWASM, Version: 1}
+	return &Module{Header: h}
 }
 
 type ModuleHeader struct {

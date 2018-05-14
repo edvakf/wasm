@@ -19,62 +19,100 @@ func NewEncoder(w io.Writer) *Encoder {
 }
 
 func (e *Encoder) Encode(m Module) error {
-	return e.writeModule(m)
-}
+	e.writeModule(m)
 
-func (e *Encoder) writeModule(m Module) error {
 	if e.err != nil {
 		return e.err
 	}
+	return nil
+}
 
-	e.err = e.writeHeader(m.Header)
+func (e *Encoder) writeVaruint7(v varuint7) {
+	if e.err != nil {
+		return
+	}
+
+	e.err = v.write(e.w)
+}
+
+func (e *Encoder) writeVaruint32(v varuint32) {
+	if e.err != nil {
+		return
+	}
+
+	_, e.err = v.write(e.w)
+}
+
+func (e *Encoder) writeModule(m Module) {
+	if e.err != nil {
+		return
+	}
+
+	e.writeHeader(m.Header)
 	for _, s := range m.Sections {
-		e.err = e.writeSection(s)
+		e.writeSection(s)
 	}
-	// if err != nil {
-	// 	e.err = err
-	// 	return err
-	// }
-	return e.err
 }
 
-func (e *Encoder) writeHeader(hdr ModuleHeader) error {
+func (e *Encoder) writeHeader(hdr ModuleHeader) {
 	if e.err != nil {
-		return e.err
+		return
 	}
 
-	_, err := e.w.Write(hdr.Magic[:])
-	if err != nil {
-		return err
+	_, e.err = e.w.Write(hdr.Magic[:])
+	if e.err != nil {
+		return
 	}
 
-	err = binary.Write(e.w, order, hdr.Version)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	e.err = binary.Write(e.w, order, hdr.Version)
 }
 
-func (e *Encoder) writeSection(s Section) error {
+func (e *Encoder) writeSection(sec Section) {
 	if e.err != nil {
-		return e.err
+		return
 	}
 
-	switch s.ID() {
-	case TypeID:
-		e.err = e.writeTypeSection(TypeSection(s))
+	switch s := sec.(type) {
+	case TypeSection:
+		e.writeTypeSection(s)
+	default:
+		panic("TODO")
 	}
-
-	return nil
 }
 
-func (e *Encoder) writeTypeSection(s TypeSection) error {
+func (e *Encoder) writeTypeSection(s TypeSection) {
 	if e.err != nil {
-		return e.err
+		return
 	}
 
-	//
+	e.writeVaruint32(varuint32(len(s.types)))
+	for _, t := range s.types {
+		e.writeFuncType(t)
+	}
+}
 
-	return nil
+func (e *Encoder) writeFuncType(ft FuncType) {
+	if e.err != nil {
+		return
+	}
+
+	e.writeVaruint7(varuint7(ft.form))
+
+	e.writeVaruint32(varuint32(len(ft.params)))
+	for _, v := range ft.params {
+		e.writeValueType(v)
+	}
+
+	e.writeVaruint32(varuint32(len(ft.results)))
+	for _, v := range ft.results {
+		e.writeValueType(v)
+	}
+}
+
+func (e *Encoder) writeValueType(v ValueType) {
+	if e.err != nil {
+		return
+	}
+
+	e.writeVaruint7(varuint7(v))
 }
