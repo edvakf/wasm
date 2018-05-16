@@ -64,12 +64,28 @@ func uvarint(r io.Reader) (uint32, int, error) {
 }
 
 func varint(r io.Reader) (int32, int, error) {
-	uv, n, err := uvarint(r)
-	v := int32(uv >> 1)
-	if uv&1 != 0 {
-		v = ^v
+	var result int32 = 0
+	var shift uint = 0
+	var size uint = 32
+	buf := make([]byte, 1)
+	n := 0
+	for {
+		_, err := r.Read(buf)
+		if err != nil {
+			return 0, n, err
+		}
+		n++
+		b := int32(buf[0])
+		result |= (b << shift) & 0x7F
+		shift += 7
+		if b&0x80 == 0 {
+			if shift < size && b&0x40 != 0 {
+				result |= ^0 << shift
+			}
+			break
+		}
 	}
-	return v, n, err
+	return result, n, nil
 }
 
 func (v varuint32) write(w io.Writer) (int, error) {
@@ -103,13 +119,66 @@ func (v varuint7) write(w io.Writer) error {
 	return nil
 }
 
-type ValueType int32 // varuint7
+func (v varint64) write(w io.Writer) (int, error) {
+	n := 0
+	more := true
+	for more {
+		b := v & 0x7F
+		v >>= 7 // arithmetic shift
+		if (v == 0 && b&0x40 == 0) || (v == -1 && b&0x40 != 0) {
+			more = false
+		} else {
+			b |= 0x80
+		}
+		_, err := w.Write([]byte{uint8(b)})
+		if err != nil {
+			return n, err
+		}
+		n++
+	}
+	return n, nil
+}
+
+// code is exactly the same as varint64.write
+func (v varint32) write(w io.Writer) (int, error) {
+	// varint64(v).write(w)
+	n := 0
+	more := true
+	for more {
+		b := v & 0x7F
+		v >>= 7 // arithmetic shift
+		if (v == 0 && b&0x40 == 0) || (v == -1 && b&0x40 != 0) {
+			more = false
+		} else {
+			b |= 0x80
+		}
+		_, err := w.Write([]byte{uint8(b)})
+		if err != nil {
+			return n, err
+		}
+		n++
+	}
+	return n, nil
+}
+
+func (v varint7) write(w io.Writer) error {
+	if v >= 64 || v <= -65 {
+		return fmt.Errorf("invalid value for varint7: %d", v)
+	}
+	_, err := w.Write([]byte{uint8(v) & 0x7F})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type ValueType int32 // edvakf:varuint7 (but negative)
 
 type BlockType varint7
 type ElemType varint7
 
 type FuncType struct {
-	form    uint32      // value for the 'func' type constructor // varuint7
+	form    uint32      // value for the 'func' type constructor // edvakf:varint7
 	params  []ValueType // parameters of the function
 	results []ValueType // results of the function
 }

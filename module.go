@@ -141,7 +141,7 @@ type ExportSection struct {
 type ExportEntry struct {
 	field string
 	kind  ExternalKind // kind of definition being exported
-	index uint32       // index into the corresponding index space
+	index uint32       // index into the corresponding index space // edvakf:varuint32
 }
 
 // StartSection declares the start function

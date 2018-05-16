@@ -42,6 +42,30 @@ func (e *encoder) writeVaruint32(v varuint32) {
 	_, e.err = v.write(e.w)
 }
 
+func (e *encoder) writeVarint7(v varint7) {
+	if e.err != nil {
+		return
+	}
+
+	e.err = v.write(e.w)
+}
+
+func (e *encoder) writeVarint32(v varint32) {
+	if e.err != nil {
+		return
+	}
+
+	_, e.err = v.write(e.w)
+}
+
+func (e *encoder) writeVarint64(v varint64) {
+	if e.err != nil {
+		return
+	}
+
+	_, e.err = v.write(e.w)
+}
+
 func (e *encoder) writeModule(m Module) {
 	if e.err != nil {
 		return
@@ -80,6 +104,8 @@ func (e *encoder) writeSection(sec Section) {
 		encSec.writeTypeSection(s)
 	case FunctionSection:
 		encSec.writeFunctionSection(s)
+	case ExportSection:
+		encSec.writeExportSection(s)
 	case CodeSection:
 		encSec.writeCodeSection(s)
 	default:
@@ -107,7 +133,7 @@ func (e *encoder) writeFuncType(ft FuncType) {
 		return
 	}
 
-	e.writeVaruint7(varuint7(ft.form))
+	e.writeVarint7(varint7(ft.form))
 
 	e.writeVaruint32(varuint32(len(ft.params)))
 	for _, v := range ft.params {
@@ -125,7 +151,7 @@ func (e *encoder) writeValueType(v ValueType) {
 		return
 	}
 
-	e.writeVaruint7(varuint7(v))
+	e.writeVarint7(varint7(v))
 }
 
 func (e *encoder) writeFunctionSection(s FunctionSection) {
@@ -170,6 +196,39 @@ func (e *encoder) writeLocalEntry(l LocalEntry) {
 
 	e.writeVaruint32(varuint32(l.Count))
 	e.writeValueType(l.Type)
+}
+
+func (e *encoder) writeExportSection(s ExportSection) {
+	if e.err != nil {
+		return
+	}
+
+	e.writeVaruint32(varuint32(len(s.exports)))
+	for _, ex := range s.exports {
+		e.writeExportEntry(ex)
+	}
+}
+
+func (e *encoder) writeExportEntry(ex ExportEntry) {
+	if e.err != nil {
+		return
+	}
+
+	e.writeVaruint32(varuint32(len(ex.field)))
+	_, e.err = e.w.Write([]byte(ex.field))
+	if e.err != nil {
+		return
+	}
+	e.writeExternalKind(ex.kind)
+	e.writeVaruint32(varuint32(ex.index))
+}
+
+func (e *encoder) writeExternalKind(k ExternalKind) {
+	if e.err != nil {
+		return
+	}
+
+	_, e.err = e.w.Write([]byte{byte(k)})
 }
 
 func (e *encoder) writeCode(c Code) {
