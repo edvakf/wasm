@@ -161,24 +161,13 @@ func (v varint32) write(w io.Writer) (int, error) {
 	return n, nil
 }
 
-func (v varint7) write(w io.Writer) error {
-	if v >= 64 || v <= -65 {
-		return fmt.Errorf("invalid value for varint7: %d", v)
-	}
-	_, err := w.Write([]byte{uint8(v) & 0x7F})
-	if err != nil {
-		return err
-	}
-	return nil
-}
+type ValueType varint7
 
-type ValueType int32 // edvakf:varuint7 (but negative)
-
-type BlockType varint7
-type ElemType varint7
+type BlockType ValueType
+type ElemType ValueType
 
 type FuncType struct {
-	form    uint32      // value for the 'func' type constructor // edvakf:varint7
+	form    ValueType   // value for the 'func' type constructor
 	params  []ValueType // parameters of the function
 	results []ValueType // results of the function
 }

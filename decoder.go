@@ -280,7 +280,7 @@ func (d *decoder) readFuncType(r io.Reader, ft *FuncType) {
 		return
 	}
 
-	d.readVarU7(r, &ft.form)
+	d.readValueType(r, &ft.form)
 
 	var params uint32
 	d.readVarU32(r, &params)
@@ -302,9 +302,9 @@ func (d *decoder) readValueType(r io.Reader, vt *ValueType) {
 		return
 	}
 
-	var v int32
-	d.readVarI7(r, &v)
-	*vt = ValueType(v)
+	var v [1]byte
+	d.read(r, v[:])
+	*vt = ValueType(v[0])
 }
 
 func (d *decoder) readImportSection(r io.Reader, s *ImportSection) {

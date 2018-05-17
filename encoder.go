@@ -47,7 +47,7 @@ func (e *encoder) writeVarint7(v varint7) {
 		return
 	}
 
-	e.err = v.write(e.w)
+	_, e.err = e.w.Write([]byte{byte(v)})
 }
 
 func (e *encoder) writeVarint32(v varint32) {
@@ -133,7 +133,7 @@ func (e *encoder) writeFuncType(ft FuncType) {
 		return
 	}
 
-	e.writeVarint7(varint7(ft.form))
+	e.writeValueType(ft.form)
 
 	e.writeVaruint32(varuint32(len(ft.params)))
 	for _, v := range ft.params {
